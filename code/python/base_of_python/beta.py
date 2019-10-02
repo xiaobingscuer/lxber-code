@@ -3,7 +3,7 @@ import numpy as np
 from scipy import stats
 from matplotlib import style
 style.use('ggplot')
-params = [1, 2, 3]
+params = [0.1, 0.2, 0.3]
 x = np.linspace(0, 1, 100)
 f, ax = plt.subplots(len(params), len(params), sharex=True, sharey=True)
 for i in range(len(params)):
