@@ -2,12 +2,65 @@
 # coding=utf-8
 
 __doc__ = """
-5臂赌博机试验
+多臂赌博机试验
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import stats
+from scipy import stats as st
+
+
+class ArmsBandit(object):
+    def __init__(self):
+        self.rand_seed = 0
+        self.steps = 1000
+        self.learn_alpha = 0.1
+        self.arms = ["a", "b", "c", "d", "e", "f"]
+        self.actions = ["action_a", "action_b", "action_c", "action_d", "action_e", "action_f"]
+        self.rewards_normal_distribution = {
+            "action_a": {"mean": 0, "std": 1},
+            "action_b": {"mean": 0, "std": 1},
+            "action_c": {"mean": 0, "std": 1},
+            "action_d": {"mean": 0, "std": 1},
+            "action_e": {"mean": 0, "std": 1},
+            "action_f": {"mean": 0, "std": 1}
+        }
+        self.best_action = "action_a"
+        self.algorithms = ["rand", "uniform", "e-greedy", "ucb", "ts"]
+        self.results = {
+            "rand": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
+            "uniform": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
+            "e-greedy": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
+            "ucb": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
+            "ts": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []}
+        }
+        pass
+
+    def generate_normal_distribution_rewards(self, mean=0, std=1):
+        np.random.seed(self.rand_seed)
+        norm = st.norm(mean, std)
+        pass
+
+    def action_choice_algorithms(self, algorithms='rand'):
+        for t in self.steps:
+            # estimate model
+            # choose action
+            # apply action and observe reward
+            # update estimated model
+            # accumulate reward and regrets
+            pass
+        pass
+
+    def compare_results(self):
+        # table of reward and regret
+        # average reward
+        # accumulated reward
+        # accumulated regrets
+        # actions
+        # optimal action
+        pass
+
+    pass
 
 
 class Bandit():
@@ -32,7 +85,7 @@ class Bandit():
                 r = ((float)(self.positive_feedback[k]) / (self.positive_feedback[k] + self.negative_feedback[k]))
                 self.estimate_rewords[k][t] = r
 
-            # choice action
+            # choose action
             best_action = np.random.choice(range(self.arms))
             self.choices[t] = best_action
 
@@ -337,4 +390,7 @@ class Bandit():
 
 if __name__ == "__main__":
     print("hello world!")
-    Bandit().compare()
+    # Bandit().compare()
+    norm_seq = st.norm.rvs(size=100)
+    plt.plot(range(100), norm_seq, label="norm")
+    plt.show()
