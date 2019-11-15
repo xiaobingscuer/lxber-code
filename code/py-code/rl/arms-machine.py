@@ -15,6 +15,7 @@ class ArmsBandit(object):
         self.rand_seed = 0
         self.steps = 1000
         self.learn_alpha = 0.1
+        self.q_value_init = 0
         self.arms = ["a", "b", "c", "d", "e", "f"]
         self.actions = ["action_a", "action_b", "action_c", "action_d", "action_e", "action_f"]
         self.rewards_normal_distribution = {
@@ -26,29 +27,52 @@ class ArmsBandit(object):
             "action_f": {"mean": 0, "std": 1}
         }
         self.best_action = "action_a"
+        self.best_reward = self.rewards_normal_distribution[self.best_action]["mean"]
+        self.rand_rewards = st.norm.rvs(size=self.steps+1)
         self.algorithms = ["rand", "uniform", "e-greedy", "ucb", "ts"]
         self.results = {
-            "rand": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
-            "uniform": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
-            "e-greedy": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
-            "ucb": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []},
-            "ts": {"sum_rewards": [], "average_rewards": [], "sum_regrets": [], "actions": [], "optimal_action": []}
+            "rand": {"sum_rewards": [0], "average_rewards": [0], "sum_regrets": [0], "actions": [], "optimal_action": [0]},
+            "uniform": {"sum_rewards": [0], "average_rewards": [0], "sum_regrets": [0], "actions": [], "optimal_action": [0]},
+            "e-greedy": {"sum_rewards": [0], "average_rewards": [0], "sum_regrets": [0], "actions": [], "optimal_action": [0]},
+            "ucb": {"sum_rewards": [0], "average_rewards": [0], "sum_regrets": [0], "actions": [], "optimal_action": [0]},
+            "ts": {"sum_rewards": [0], "average_rewards": [0], "sum_regrets": [0], "actions": [], "optimal_action": [0]}
         }
         pass
 
-    def generate_normal_distribution_rewards(self, mean=0, std=1):
-        np.random.seed(self.rand_seed)
-        norm = st.norm(mean, std)
-        pass
+    def generate_normal_distribution_rewards(self, mean=0, std=1, step=0):
+        # np.random.seed(self.rand_seed)
+        # norms = std * st.norm.rvs(size=self.steps+1) + mean
+        reward = std * self.rand_rewards[step] + mean
+        return reward
 
     def action_choice_algorithms(self, algorithms='rand'):
-        for t in self.steps:
-            # estimate model
+        # define q-value of actions
+        q_values = self.q_value_init * np.ones((len(self.actions), 1))
+        for t in range(self.steps):
             # choose action
+            action_index = np.argmax(self.q_values[..., 0])
+            action = self.actions[action_index]
             # apply action and observe reward
+            mean = self.rewards_normal_distribution[action]["mean"]
+            std = self.rewards_normal_distribution[action]["std"]
+            reward = self.generate_normal_distribution_rewards(mean=mean, std=std)
             # update estimated model
-            # accumulate reward and regrets
-            pass
+            q_action = q_values[action_index][0]
+            q_values[action_index][0] = q_action + (reward - q_action) / (t + 1)
+            # record results
+            average_reward = self.results[algorithms]["average_rewards"][-1]
+            average_reward = average_reward + (reward - average_reward) / (t + 1)
+            self.results[algorithms]["average_rewards"].append(average_reward)
+            regret = self.best_reword - self.rewards_normal_distribution[action]["mean"]
+            self.results[algorithms]["sum_regrets"].append(self.results[algorithms]["sum_regrets"][-1] + regret)
+            self.results[algorithms]["sum_rewards"].append(self.results[algorithms]["sum_rewards"][-1] + reward)
+            self.results[algorithms]["actions"].append(action_index)
+            optimal_action = self.results[algorithms]["optimal_action"][-1]
+            if action == self.best_action:
+                optimal_action = optimal_action + (1 - optimal_action) / (t + 1)
+            else:
+                optimal_action = optimal_action + (0 - optimal_action) / (t + 1)
+            self.results[algorithms]["optimal_action"].append(optimal_action)
         pass
 
     def compare_results(self):
@@ -391,6 +415,19 @@ class Bandit():
 if __name__ == "__main__":
     print("hello world!")
     # Bandit().compare()
-    norm_seq = st.norm.rvs(size=100)
-    plt.plot(range(100), norm_seq, label="norm")
-    plt.show()
+    np.random.seed(10)
+    # N_points = 1000
+    # n_bins = 20
+    # x = np.random.randn(1000)
+    # y = .4 * x + 5
+    # fig, axs = plt.subplots(1, 1, sharey=True, tight_layout=True)
+    # axs.hist(x, bins=n_bins)
+    # # axs[0].hist(x, bins=n_bins)
+    # # axs[1].hist(y, bins=n_bins)
+    # plt.show()
+
+    # npr = np.random.randn(2,3)
+    # print(npr)
+    # print(npr[..., 2])
+
+    print(np.ones((3, 1)))
