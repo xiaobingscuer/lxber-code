@@ -13,8 +13,10 @@ from scipy import stats as st
 class ArmsBandit(object):
     def __init__(self):
         self.rand_seed = 0
-        self.steps = 1000
+        self.steps = 10
         self.learn_alpha = 0.1
+        self.epsilon = 0.1
+        self.uniform_steps = 0.4
         self.q_value_init = 0
         self.arms = ["a", "b", "c", "d", "e", "f"]
         self.actions = ["action_a", "action_b", "action_c", "action_d", "action_e", "action_f"]
@@ -29,6 +31,7 @@ class ArmsBandit(object):
         self.best_action = "action_a"
         self.best_reward = self.rewards_normal_distribution[self.best_action]["mean"]
         self.rand_rewards = st.norm.rvs(size=self.steps+1)
+        self.q_values = []
         self.algorithms = ["rand", "uniform", "e-greedy", "ucb", "ts"]
         self.results = {
             "rand": {"sum_rewards": [0], "average_rewards": [0], "sum_regrets": [0], "actions": [], "optimal_action": [0]},
@@ -46,24 +49,44 @@ class ArmsBandit(object):
         return reward
 
     def action_choice_algorithms(self, algorithms='rand'):
+        print("algorithm is: %s" % algorithms)
+        # generate rand seq
         # define q-value of actions
-        q_values = self.q_value_init * np.ones((len(self.actions), 1))
+        self.q_values = self.q_value_init * np.ones(len(self.actions))
         for t in range(self.steps):
+            print("----------step: %s -----------" % t)
             # choose action
-            action_index = np.argmax(self.q_values[..., 0])
+            action_index = np.argmax(self.q_values)
+            if algorithms == "rand":
+                action_index = np.random.choice(len(self.actions))
+            if algorithms == "uniform":
+                if t < self.uniform_steps * self.steps:
+                    action_index = np.random.choice(len(self.actions))
+            if algorithms == "e-greedy":
+                if np.random.rand() < self.epsilon:
+                    action_index = np.random.choice(len(self.actions))
+            if algorithms == "ucb":
+                if t < len(self.actions):
+                    action_index = t
+                else:
+                    q_bounds = self.q_values + 2.0 * np.sqrt(np.log(t + 1) / np.bincount(self.results["ucb"]["actions"]))
+                    action_index = np.argmax(q_bounds)
+            if algorithms == "ts":
+                pass
             action = self.actions[action_index]
+            print(action)
             # apply action and observe reward
             mean = self.rewards_normal_distribution[action]["mean"]
             std = self.rewards_normal_distribution[action]["std"]
             reward = self.generate_normal_distribution_rewards(mean=mean, std=std)
             # update estimated model
-            q_action = q_values[action_index][0]
-            q_values[action_index][0] = q_action + (reward - q_action) / (t + 1)
+            q_action = self.q_values[action_index]
+            self.q_values[action_index] = q_action + (reward - q_action) / (t + 1)
             # record results
             average_reward = self.results[algorithms]["average_rewards"][-1]
             average_reward = average_reward + (reward - average_reward) / (t + 1)
             self.results[algorithms]["average_rewards"].append(average_reward)
-            regret = self.best_reword - self.rewards_normal_distribution[action]["mean"]
+            regret = self.best_reward - self.rewards_normal_distribution[action]["mean"]
             self.results[algorithms]["sum_regrets"].append(self.results[algorithms]["sum_regrets"][-1] + regret)
             self.results[algorithms]["sum_rewards"].append(self.results[algorithms]["sum_rewards"][-1] + reward)
             self.results[algorithms]["actions"].append(action_index)
@@ -76,7 +99,13 @@ class ArmsBandit(object):
         pass
 
     def compare_results(self):
-        # table of reward and regret
+        # table of sum reward and regret
+        print("----------------- compare results ----------------------")
+        print("algorithm\tsum_reward\tsum_regret")
+        for alg in self.results.keys():
+            print("%s\t%s\t%s" % (alg, self.results[alg]["sum_rewards"][-1], self.results[alg]["sum_regrets"][-1]))
+            pass
+        print("---------------------------------------")
         # average reward
         # accumulated reward
         # accumulated regrets
@@ -415,7 +444,7 @@ class Bandit():
 if __name__ == "__main__":
     print("hello world!")
     # Bandit().compare()
-    np.random.seed(10)
+    # np.random.seed(10)
     # N_points = 1000
     # n_bins = 20
     # x = np.random.randn(1000)
@@ -430,4 +459,26 @@ if __name__ == "__main__":
     # print(npr)
     # print(npr[..., 2])
 
-    print(np.ones((3, 1)))
+    # print(np.ones((3, 1)))
+
+    # q_values =  np.random.randn(10)
+    # print(q_values)
+    # action_index = np.argmax(q_values)
+    # print(action_index)
+    #
+    # print(np.argmax([.1, .2, .3]))
+
+    # samples = np.random.choice(5, 3, replace=False)
+    # print(samples)
+    actions = [0,1,2,3,4,3,2]
+    print(np.bincount(actions))
+    print(1 / np.bincount(actions))
+    bounds = 2.0 * np.sqrt(np.log(10) / np.bincount(actions))
+    print(bounds)
+
+    ab = ArmsBandit()
+    # ab.action_choice_algorithms("rand")
+    # ab.action_choice_algorithms("uniform")
+    # ab.action_choice_algorithms("e-greedy")
+    ab.action_choice_algorithms("ucb")
+    ab.compare_results()
