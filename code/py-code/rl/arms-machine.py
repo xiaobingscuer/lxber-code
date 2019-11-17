@@ -19,7 +19,6 @@ class ArmsBandit(object):
         self.uniform_steps = 0.4
         self.q_value_init = 0
         self.mean_std = [[.1, 1], [.2, 1], [.3, 1], [.4, 1], [.5, 1], [.6, 1]]
-        # self.mean_std = [[.1, 1], [.2, 1], [.4, 1]]
         self.arms = [chr(97+i) for i in range(len(self.mean_std))]
         self.actions = ["action_" + act for act in self.arms]
         self.rewards_distribution = {}
@@ -32,7 +31,6 @@ class ArmsBandit(object):
         self.algorithms = ["rand", "uniform", "e-greedy", "ucb", "ts"]
         self.results_keys = ["average_rewards", "sum_rewards", "sum_regrets", "actions", "optimal_action"]
         self.results = {}
-        pass
 
     def generate_rewards(self, mean=0, std=1, step=0):
         # np.random.seed(self.rand_seed)
@@ -72,7 +70,6 @@ class ArmsBandit(object):
             self.q_values[action_index] = (reward + self.q_values[action_index]) / 2
             # record results
             self.results[algorithms]["actions"].append(action_index)
-            pass
         # iterating
         for t in range(self.steps):
             # print("----------step: %s -----------" % t)
@@ -113,9 +110,6 @@ class ArmsBandit(object):
             optimal_action = self.results[algorithms]["optimal_action"][-1]
             optimal_action += ((1 if action == self.best_action else 0) - optimal_action) / (t + 1)
             self.results[algorithms]["optimal_action"].append(optimal_action)
-        # print("q_values is ")
-        # print(self.q_values)
-        pass
 
     def compare_results(self):
         # rewards distribution
@@ -143,21 +137,12 @@ class ArmsBandit(object):
             axs.legend()
         # show
         plt.show()
-        pass
-
-    pass
 
 
 if __name__ == "__main__":
     print("hello world!")
     ab = ArmsBandit()
     ab.steps = 1000 * 20
-    # for algs in ab.algorithms:
-    #     ab.action_choice_algorithms(algs)
-    ab.action_choice_algorithms("rand")
-    ab.action_choice_algorithms("e-greedy")
-    ab.action_choice_algorithms("uniform")
-    ab.action_choice_algorithms("ucb")
-    ab.action_choice_algorithms("ts")
-
+    for algs in ab.algorithms:
+        ab.action_choice_algorithms(algs)
     ab.compare_results()
