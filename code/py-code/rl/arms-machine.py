@@ -18,7 +18,8 @@ class ArmsBandit(object):
         self.epsilon = 0.1
         self.uniform_steps = 0.4
         self.q_value_init = 0
-        self.mean_std = [[.1, 1], [.2, 1], [.3, 1], [.4, 1], [.5, 1], [.6, 1]]
+        self.mean_std = [[.1, 5], [.2, 6], [.3, 7], [.4, 8], [.5, 9], [.6, 10]]
+        # self.mean_std = [[1, 5], [2, 6], [3, 7], [4, 8], [5, 9], [6, 10]]
         self.arms = [chr(97+i) for i in range(len(self.mean_std))]
         self.actions = ["action_" + act for act in self.arms]
         self.rewards_distribution = {}
@@ -35,8 +36,8 @@ class ArmsBandit(object):
     def generate_rewards(self, mean=0, std=1, step=0):
         # np.random.seed(self.rand_seed)
         # norms = std * st.norm.rvs(size=self.steps+1) + mean
-        reward = std * self.rand_rewards[step] + mean
-        # reward = std * st.norm.rvs() + mean
+        # reward = std * self.rand_rewards[step] + mean
+        reward = std * st.norm.rvs() + mean
         return reward
 
     def action_choice_algorithms(self, algorithms='rand'):
@@ -44,7 +45,7 @@ class ArmsBandit(object):
         if algorithms not in self.algorithms:
             return "algorithms not existed!"
         # generate standard normal rand rewards
-        np.random.seed(self.rand_seed)
+        # np.random.seed(self.rand_seed)
         self.rand_rewards = st.norm.rvs(size=self.steps + 1)
         # define result
         self.results.update({algorithms: {}})
@@ -56,7 +57,6 @@ class ArmsBandit(object):
         if algorithms == "ts":
             positive_feedback = np.ones(len(self.actions))
             negative_feedback = np.ones(len(self.actions))
-            rewards_mm = [0, 1]
         # choose action one by one before iterating
         self.results[algorithms]["actions"].clear()
         for action_index in range(len(self.actions)):
@@ -84,7 +84,7 @@ class ArmsBandit(object):
             if algorithms == "e-greedy" and np.random.rand() < self.epsilon:
                 action_index = action_index_rand
             if algorithms == "ucb":
-                action_index = np.argmax(self.q_values + np.sqrt(2.0 * np.log(t + 1) / actions_count))
+                action_index = np.argmax(self.q_values + np.sqrt(2.0 * np.log(t + len(self.actions)) / actions_count))
             if algorithms == "ts":
                 action_index = np.argmax(st.beta(positive_feedback, negative_feedback).rvs())
             action = self.actions[action_index]
@@ -96,6 +96,13 @@ class ArmsBandit(object):
             q_action = self.q_values[action_index]
             self.q_values[action_index] = q_action + (reward - q_action) / actions_count[action_index]
             if algorithms == "ts":
+                q_action = self.q_values[action_index]
+                q_mim = np.min(self.q_values) - .0001
+                q_max = np.max(self.q_values) + .0001
+                # if q_action < 0 or q_action > 1:
+                if q_mim < 0 or q_max > 1:
+                    q_action = ((self.q_values - q_mim)/(q_max - q_mim))[action_index]
+                # if t > 10 * len(self.actions):
                 ts_mean = st.beta.mean(positive_feedback[action_index], negative_feedback[action_index])
                 positive_feedback[action_index] += (1 if q_action >= ts_mean else 0)
                 negative_feedback[action_index] += (1 if q_action < ts_mean else 0)
@@ -142,7 +149,9 @@ class ArmsBandit(object):
 if __name__ == "__main__":
     print("hello world!")
     ab = ArmsBandit()
-    ab.steps = 1000 * 20
-    for algs in ab.algorithms:
-        ab.action_choice_algorithms(algs)
+    ab.steps = 1000 * 3
+    # for algs in ab.algorithms:
+    #     ab.action_choice_algorithms(algs)
+    ab.action_choice_algorithms("ts")
+    ab.action_choice_algorithms("ucb")
     ab.compare_results()
