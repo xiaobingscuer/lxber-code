@@ -37,7 +37,7 @@ class ArmsBandit(object):
         return reward
 
     def action_choice_algorithms(self, algorithms='rand'):
-        print("algorithm is: %s" % algorithms)
+        # print("algorithm is: %s" % algorithms)
         if algorithms not in self.algorithms:
             return "algorithms not existed!"
         # define result
@@ -77,7 +77,8 @@ class ArmsBandit(object):
             reward = self.generate_rewards(mean=mean, std=std, step=t)
             # update estimated model
             q_action = self.q_values[action_index]
-            self.q_values[action_index] += (reward - q_action) / actions_count[action_index]
+            # self.q_values[action_index] += (reward - q_action) / actions_count[action_index] # 增量平均
+            self.q_values[action_index] += self.learn_alpha * (reward - q_action)   # 指数平均，适用于非平稳问题
             if algorithms == "ts":
                 ts_mean = st.beta.mean(positive_feedback, negative_feedback)[action_index]
                 q_action = self.q_values[action_index]
@@ -98,10 +99,19 @@ class ArmsBandit(object):
     def compare_results(self):
         # rewards distribution
         print("----------------- rewards distribution ----------------------")
+        [self.rewards_distribution.update({self.actions[i]: {"mean": self.mean_std[i][0], "std": self.mean_std[i][1]}})
+         for i in range(len(self.mean_std))]
         print("action\treward_mean\treward_std")
+        fig, axs = plt.subplots()
         for ak in self.rewards_distribution.keys():
             print("%s\t%s\t%s\t" % (ak, self.rewards_distribution[ak]["mean"], self.rewards_distribution[ak]["std"]))
-            # plot distribution
+            mean = self.rewards_distribution[ak]["mean"]
+            std = self.rewards_distribution[ak]["std"]
+            x = np.linspace(st.norm(loc=mean, scale=std).ppf(0.1), st.norm(loc=mean, scale=std).ppf(0.99), 100)
+            y = st.norm(loc=mean, scale=std).pdf(x)
+            axs.plot(x, y, label="%s:%s-%s" % (ak, mean, std), alpha=0.6)
+        axs.set(title="pdf of rewards")
+        axs.legend()
         # table of sum reward and regret
         print("----------------- compare results ----------------------")
         print("algorithm\tsum_reward\tsum_regret")
@@ -117,7 +127,7 @@ class ArmsBandit(object):
                 if ret == "actions":
                     axs.scatter(range(len(self.results[alg][ret])), self.results[alg][ret], label=alg, alpha=0.6)
                     continue
-                axs.plot(range(len(self.results[alg][ret])), self.results[alg][ret], label=alg)
+                axs.plot(range(len(self.results[alg][ret])), self.results[alg][ret], label=alg, alpha=0.6)
             axs.set(title=ret)
             axs.legend()
         # show
@@ -128,52 +138,36 @@ if __name__ == "__main__":
     print("hello world!")
     ab = ArmsBandit()
     ab.steps = 1000 * 3
-    N_CMP = 100
-    # 对比100次运行后的算法效果，当具有相同方差,不同均值时
-    # define result
-    compare_results = {
-        "ts": {"sum_reward": [], "sum_regret": [], "optimal_action": []},
-        "ucb": {"sum_reward": [], "sum_regret": [], "optimal_action": []},
-        "e-greedy": {"sum_reward": [], "sum_regret": [], "optimal_action": []}
-    }
-    for n in range(N_CMP):
-        print(" ------------- N_CMP: %s -------------" % n)
-        # generate standard normal rand rewards
-        ab.rand_rewards = np.random.randn(ab.steps + 1)
-        # run ts algorithm
-        ab.action_choice_algorithms("ts")
-        # record result
-        compare_results["ts"]["sum_reward"].append(ab.results["ts"]["sum_rewards"][-1])
-        compare_results["ts"]["sum_regret"].append(ab.results["ts"]["sum_regrets"][-1])
-        compare_results["ts"]["optimal_action"].append(ab.results["ts"]["optimal_action"][-1])
-        # run ts algorithm
-        ab.action_choice_algorithms("ucb")
-        # record result
-        compare_results["ucb"]["sum_reward"].append(ab.results["ucb"]["sum_rewards"][-1])
-        compare_results["ucb"]["sum_regret"].append(ab.results["ucb"]["sum_regrets"][-1])
-        compare_results["ucb"]["optimal_action"].append(ab.results["ucb"]["optimal_action"][-1])
-        # run ts algorithm
-        ab.action_choice_algorithms("e-greedy")
-        # record result
-        compare_results["e-greedy"]["sum_reward"].append(ab.results["e-greedy"]["sum_rewards"][-1])
-        compare_results["e-greedy"]["sum_regret"].append(ab.results["e-greedy"]["sum_regrets"][-1])
-        compare_results["e-greedy"]["optimal_action"].append(ab.results["e-greedy"]["optimal_action"][-1])
+    N_CMP = 15
+    cmp_algs = ["ts", "ucb", "e-greedy"]
+    cmp_rets = ["sum_rewards", "sum_regrets", "optimal_action"]
+    cmp_mean_std = [[[.3, 1], [.4, 1], [.6, 1], [.5, 1], [.2, 1]],  # 相同方差，不同均值
+                    [[.5, 1], [.5, 3], [.5, 5], [.5, 4], [.5, 2]],  # 相同均值，不同方差
+                    [[.3, 1], [.4, 3], [.6, 5], [.5, 4], [.2, 2]]]  # 不同均值，不同方差
+    # 多次运行后的不同算法对不同分布的奖励的学习效果的均值和方差和对比
+    for mean_std in cmp_mean_std[:1]:
+        # define compare results & mean_std of rewards
+        cmp_results = {}
+        ab.mean_std = mean_std
+        print("mean_std is: %s" % mean_std)
+        for n in range(N_CMP):
+            # print(" ------------- N_CMP: %s -------------" % n)
+            # generate standard normal rand rewards
+            ab.rand_rewards = np.random.randn(ab.steps + 1)
+            # run algorithm & record results
+            for alg in cmp_algs:
+                ab.action_choice_algorithms(alg)
+                for ret in cmp_rets:
+                    if ret not in cmp_results:
+                        cmp_results.update({ret: {}})
+                    if alg not in cmp_results[ret]:
+                        cmp_results[ret].update({alg: []})
+                    cmp_results[ret][alg].append(ab.results[alg][ret][-1])
 
-    rets = {}
-    for alg in compare_results.keys():
-        for ret in compare_results[alg].keys():
-            ret_mean = np.mean(compare_results[alg][ret])
-            ret_std = np.std(compare_results[alg][ret])
-            if ret not in rets:
-                rets.update({ret: {}})
-            if alg not in rets[ret]:
-                rets[ret].update({alg: {}})
-            rets[ret][alg] = {"mean": ret_mean, "std": ret_std}
+        # print compare reults
+        for ret in cmp_results.keys():
+            print("--- %s ----------" % ret)
+            for alg in cmp_results[ret].keys():
+                print("%s " % alg + " mean: %.3f" % np.mean(cmp_results[ret][alg]) + " std: %.3f" % np.std(cmp_results[ret][alg]))
 
-    print("alg\t\tmean\t\tstd")
-    for ret in rets.keys():
-        print("--- %s ----------" % ret)
-        for alg in rets[ret].keys():
-            print("%s " % alg + " mean: %s" % rets[ret][alg]["mean"] + "  std: %s" % rets[ret][alg]["std"])
-
-    ab.compare_results()
+        # ab.compare_results()
