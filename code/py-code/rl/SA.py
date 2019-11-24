@@ -12,133 +12,67 @@ import random as rd
 import copy as cp
 
 
-class 模拟退火算法SA(object):
+class SA(object):
     def __init__(self):
         # 控制参数
-        self.迭代次数 = 3
-        self.初始温度 = 1000 * 10
-        self.降温系数 = 0.98
-        self.终止温度 = 0.1
-        # 解的表示 - 个体与种群
-        self.种群规模 = 4
-        self.维度 = 30
-        self.范围 = [[-5.12, 5.12] for _ in range(self.维度)]
-        self.种群 = []
-        self.过渡种群 = []
-        self.种群的适应度 = []
-        self.过渡种群的适应度 = []
-        self.最好个体 = None
-        # 解对应的函数
-        # self.值函数 = lambda 个体: np.sum(np.array(个体) ** 2)
-        self.值函数 = lambda 个体: np.sum(np.array(个体) ** 2 - 10 * np.cos(np.array(个体) * 2 * np.pi) + 10)
+        self.ts = 1000 * 4
+        self.delta = 0.98
+        self.te = .1
+        self.alpha = 0.9
+        # 解的约束与表示
+        self.dims = 30
+        self.scale = [[-5.12, 5.12] for _ in range(self.dims)]
+        self.dist = [s[1] - s[0] for s in self.scale]
+        self.origin = [s[0] for s in self.scale]
+        self.cur_ans = np.random.rand(self.dims) * self.dist + self.origin
+        self.cur_value = 0
+        self.best_ans = self.cur_ans
+        self.bets_value = 0
+        # 解的约束
+        # self.value_func = lambda x: np.sum(np.array(x) ** 2)
+        self.value_func = lambda x: np.sum(np.array(x) ** 2 - 10 * np.cos(np.array(x) * 2 * np.pi) + 10)
         pass
 
-    def 初始化(self):
-        self.种群 = np.random.rand(self.种群规模, len(self.范围)) * [某范围[1] - 某范围[0] for 某范围 in self.范围]
-        self.种群 += [某范围[0] for 某范围 in self.范围]
-        self.过渡种群 = cp.deepcopy(self.种群)
-        self.种群的适应度 = np.zeros(self.种群规模)
-        self.过渡种群的适应度 = np.zeros(self.种群规模)
-        # print("初始化时的种群")
-        # print(self.种群)
-        # print("初始化时的过渡种群")
-        # print(self.过渡种群)
-        pass
+    def simulate_anneal(self):
+        t = self.ts
+        self.bets_value = self.cur_value = self.value_func(self.cur_ans)
+        while True:
+            next_ans = self.get_next_ans(t)
+            value_next = self.value_func(next_ans)
+            deleta_energy = value_next - self.cur_value
+            if deleta_energy < 0: # 接受新解
+                self.cur_ans = next_ans
+                self.cur_value = value_next
+                if self.cur_value < self.bets_value:
+                    self.bets_value = self.cur_value
+                    self.best_ans = self.cur_ans
 
-    def 变异(self, 变异策略="随机+随机-随机"):
-        # 变异策略="随机+随机-随机" 要求：随机选择3个互不相同的个体，且与当前个体也不相同
-        变异组 = []
-        for 个体编号 in range(self.种群规模):
-            while True:
-                变异组员 = rd.sample(range(self.种群规模), 3)
-                if 个体编号 not in 变异组员:
-                    变异组.append(变异组员)
-                    break
-        for 个体编号 in range(self.种群规模):
-            变异组员 = 变异组[个体编号]
-            变异个体 = self.种群[变异组员[0]] + self.变异因子 * (self.种群[变异组员[1]] - self.种群[变异组员[2]])
-            self.过渡种群[个体编号] = 变异个体
+            else:   # 以概率接收差解
+                prob = np.exp(-1.0 * deleta_energy / t)
+                print("当前温度：%s 概率为： %s " % (t, prob))
+                if np.random.rand() < prob:
+                    self.cur_ans = next_ans
+                    self.cur_value = value_next
+                pass
+
+            if t < self.te:
+                break
+            t *= self.delta
+
+            print("最优值： %s " % sa.bets_value)
+
             pass
-        # print("变异组:%s" % 变异组)
-        # print("变异生成的过渡种群")
-        # print(self.过渡种群)
         pass
 
-    def 交叉(self):
-        过渡种群必交叉序列 = np.random.randint(0, len(self.范围), self.种群规模)    # 保证每个变异个体有一个等位基因被交叉
-        过渡种群是否交叉序列 = np.random.rand(self.种群规模, len(self.范围)) < self.交叉概率    # 按概率交叉
-        for 个体编号 in range(self.种群规模):
-            for 维度编号 in range(len(self.范围)):
-                if 过渡种群是否交叉序列[个体编号][维度编号] or 维度编号 == 过渡种群必交叉序列[个体编号]:
-                    if self.过渡种群[个体编号][维度编号] > self.范围[维度编号][1] or self.过渡种群[个体编号][维度编号] < self.范围[维度编号][0]:    # 对变异后的个体进行范围检查
-                        self.过渡种群[个体编号][维度编号] = np.random.rand() * (self.范围[维度编号][1] - self.范围[维度编号][0]) + self.范围[维度编号][0]
-                else:
-                    self.过渡种群[个体编号][维度编号] = self.种群[个体编号][维度编号]
-        # print(过渡种群必交叉序列)
-        # print(过渡种群是否交叉序列)
-        # print("交叉后的过渡种群")
-        # print(self.过渡种群)
-        pass
-
-    def 种群适应度评估(self):
-        for 个体编号 in range(self.种群规模):
-            self.种群的适应度[个体编号] = self.值函数(self.种群[个体编号])
-        # print("种群的适应度: %s " % self.种群的适应度)
-        # print("过渡种群的适应度: %s " % self.过渡种群的适应度)
-        pass
-
-    def 过渡种群适应度评估(self):
-        for 个体编号 in range(self.种群规模):
-            self.过渡种群的适应度[个体编号] = self.值函数(self.过渡种群[个体编号])
-        # print("种群的适应度: %s " % self.种群的适应度)
-        # print("过渡种群的适应度: %s " % self.过渡种群的适应度)
-        pass
-
-    def 选择(self, 极值类型="极大"):
-        for 个体编号 in range(self.种群规模):
-            if 极值类型 == "极大" and self.过渡种群的适应度[个体编号] > self.种群的适应度[个体编号]:
-                self.种群[个体编号] = cp.deepcopy(self.过渡种群[个体编号])
-                self.种群的适应度[个体编号] = self.过渡种群的适应度[个体编号]
-            if 极值类型 == "极小" and self.过渡种群的适应度[个体编号] < self.种群的适应度[个体编号]:
-                self.种群[个体编号] = cp.deepcopy(self.过渡种群[个体编号])
-                self.种群的适应度[个体编号] = self.过渡种群的适应度[个体编号]
-            pass
-        if 极值类型 == "极大":
-            self.最好个体 = np.argmax(self.种群的适应度)
-        if 极值类型 == "极小":
-            self.最好个体 = np.argmin(self.种群的适应度)
-        # print("选择后的种群")
-        # print(self.种群)
-        pass
-
-    def 迭代(self):
-        """
-        当前解，生成的下一步解，在生成的下一步解和当前解之间进行选择
-        生成下一步解：引导方向，行走步长
-        选择：控制方向，避免搜索已经被搜索过的差解，这是比随机方法好的原因
-        :return:
-        """
-        self.初始化()
-        self.种群适应度评估()
-        for 迭代编号 in range(self.迭代次数):
-            print("--------- 迭代编号: %s ---------" % 迭代编号)
-            self.变异()
-            self.交叉()
-            self.过渡种群适应度评估()
-            self.选择("极小")
-        # print("迭代后的种群")
-        # print(self.种群)
-        print("最好个体")
-        print(self.种群[self.最好个体])
-        print("最优值")
-        print(self.种群的适应度[self.最好个体])
-        pass
-    pass
+    def get_next_ans(self, t):
+        next_ans = self.cur_ans + np.random.rand(self.dims) * 2
+        return next_ans
 
 
 if __name__ == "__main__":
     print("hello world!")
-    差分进化对象 = 差分进化算法DE()
-    差分进化对象.迭代次数 = 1000
-    差分进化对象.种群规模 = 100
-    差分进化对象.迭代()
+    sa = SA()
+    sa.simulate_anneal()
+    print("最好解：")
+    print(sa.best_ans)
+    print("最优值： %s " % sa.bets_value)
