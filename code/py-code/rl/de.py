@@ -31,8 +31,8 @@ class 差分进化算法DE(object):
         self.最好个体 = np.random.rand(self.维度) * self.范围距离 + self.范围起始
         self.最好个体适应度 = 0
         # 解对应的函数
-        # self.值函数 = lambda 个体: np.sum(np.array(个体) ** 2 - 10 * np.cos(np.array(个体) * 2 * np.pi) + 10)  # 多峰函数
-        self.值函数 = lambda 个体: np.sum(np.array(个体) ** 2)  # 单峰函数
+        self.值函数 = lambda 个体: np.sum(np.array(个体) ** 2 - 10 * np.cos(np.array(个体) * 2 * np.pi) + 10)  # 多峰函数
+        # self.值函数 = lambda 个体: np.sum(np.array(个体) ** 2)  # 单峰函数
         pass
 
     def 初始化(self):
@@ -145,15 +145,15 @@ if __name__ == "__main__":
     print("hello world!")
     差分进化对象 = 差分进化算法DE()
     差分进化对象.迭代次数 = 1000
-    差分进化对象.种群规模 = 35
+    差分进化对象.种群规模 = 32
     SN = 10  # 多次搜索，每次从上一次最优解开始搜索
     r = 0.91
     for si in range(SN):
         差分进化对象.迭代()
-        # 缩小搜索的范围
-        for i in range(差分进化对象.维度):
-            dmin = 差分进化对象.最好个体[i] - 差分进化对象.范围起始[i]
-            差分进化对象.范围距离[i] *= r
-            差分进化对象.范围起始[i] = 差分进化对象.最好个体[i] - r * dmin
-        # r *= 0.91
+        # # 缩小搜索的范围
+        # for i in range(差分进化对象.维度):
+        #     dmin = 差分进化对象.最好个体[i] - 差分进化对象.范围起始[i]
+        #     差分进化对象.范围距离[i] *= r
+        #     差分进化对象.范围起始[i] = 差分进化对象.最好个体[i] - r * dmin
+        # # r *= 0.91
 
