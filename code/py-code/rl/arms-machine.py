@@ -3,6 +3,9 @@
 
 __doc__ = """
 多臂赌博机试验
+实现多个选择动作算法：rand/uniform/e-greedy/ucb/ts
+并对这些算法的运行结果进行比较
+算法实现在action_choice_algorithms方法里
 """
 
 import matplotlib.pyplot as plt
@@ -164,10 +167,14 @@ if __name__ == "__main__":
                         cmp_results[ret].update({alg: []})
                     cmp_results[ret][alg].append(ab.results[alg][ret][-1])
 
-        # print compare reults
+        # print compare results
         for ret in cmp_results.keys():
             print("--- %s ----------" % ret)
             for alg in cmp_results[ret].keys():
                 print("%s " % alg + " mean: %.3f" % np.mean(cmp_results[ret][alg]) + " std: %.3f" % np.std(cmp_results[ret][alg]))
 
         # ab.compare_results()
+
+    # 对某个算法进行结果观察
+    # ab.action_choice_algorithms("ts")
+    # ab.compare_results()
