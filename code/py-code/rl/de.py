@@ -69,10 +69,10 @@ class 差分进化算法DE(object):
         pass
 
     def 交叉(self):
-        过渡种群必交叉序列 = np.random.randint(0, len(self.范围), self.种群规模)    # 保证每个变异个体有一个等位基因被交叉
-        过渡种群是否交叉序列 = np.random.rand(self.种群规模, len(self.范围)) < self.交叉概率    # 按概率交叉
+        过渡种群必交叉序列 = np.random.randint(0, self.维度, self.种群规模)    # 保证每个变异个体有一个等位基因被交叉
+        过渡种群是否交叉序列 = np.random.rand(self.种群规模, self.维度) < self.交叉概率    # 按概率交叉
         for 个体编号 in range(self.种群规模):
-            for 维度编号 in range(len(self.范围)):
+            for 维度编号 in range(self.维度):
                 if 过渡种群是否交叉序列[个体编号][维度编号] or 维度编号 == 过渡种群必交叉序列[个体编号]:
                     if self.过渡种群[个体编号][维度编号] > self.范围[维度编号][1] or self.过渡种群[个体编号][维度编号] < self.范围[维度编号][0]:    # 对变异后的个体进行范围检查
                         self.过渡种群[个体编号][维度编号] = np.random.rand() * (self.范围[维度编号][1] - self.范围[维度编号][0]) + self.范围[维度编号][0]
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     差分进化对象.迭代次数 = 1000
     差分进化对象.种群规模 = 32
     SN = 10  # 多次搜索，每次从上一次最优解开始搜索
-    r = 0.91
+    # r = 0.91
     for si in range(SN):
         差分进化对象.迭代()
         # # 缩小搜索的范围
