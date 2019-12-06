@@ -6,6 +6,8 @@ __doc__ = """
 实现多个选择动作算法：rand/uniform/e-greedy/ucb/ts
 并对这些算法的运行结果进行比较
 算法实现在action_choice_algorithms方法里
+总体说来，e-greedy算法泛化性最好，ucb算法在获得最大回报时可能表现得更好，但方差也较大，
+ts算法在奖励为0到1之间时，平均表现是最好的，同样，方差也较大，介于e-greedy方法和ucb方法之间
 """
 
 import matplotlib.pyplot as plt
