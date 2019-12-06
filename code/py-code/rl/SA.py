@@ -3,7 +3,7 @@
 
 __doc__ = """
 模拟退火算法
-模拟退火算法对于连续函数优化问题不能很好地收敛,因为搜索空间较大，另外没有方向引导，会重复搜索
+模拟退火算法对于连续函数优化问题不能很好地收敛,因为搜索空间较大，另外没有方向引导，会重复搜索，因此搜索效率低
 """
 
 import numpy as np
@@ -27,8 +27,8 @@ class SA(object):
         self.best_ans = self.cur_ans    # 最优解
         self.best_energy = 1234567890     # 最优解对应的能量
         # 值函数
-        # self.value_func = lambda x: np.sum(np.array(x) ** 2)
-        self.value_func = lambda x: np.sum(np.array(x) ** 2 - 10 * np.cos(np.array(x) * 2 * np.pi) + 10)
+        self.value_func = lambda x: np.sum(np.array(x) ** 2)
+        # self.value_func = lambda x: np.sum(np.array(x) ** 2 - 10 * np.cos(np.array(x) * 2 * np.pi) + 10)
         pass
 
     def simulate_anneal(self):
