@@ -3,9 +3,13 @@
 
 __doc__ = """
 模拟退火算法
-模拟退火算法对于连续函数优化问题不能很好地收敛,因为连续搜索空间较大，另外没有方向引导，会重复搜索，因此搜索效率低
-在离散问题中表现较好，比如tsp问题，因为搜索空间较小，且每一次产生的新解都是一个不同的解
-对于离散问题，每次降温后不需要从当前最优解出发，因为整个算法过程就是逐渐收敛到最优解
+基本原理：模拟退火算法是对金属退火过程的模拟，在高温时，金属中的粒子处于高能量的杂乱状态，在低温时，这些粒子会寻找低能量位置，以处于稳定状态；
+降温过程是缓慢的，使每个粒子都有机会寻找，到各自合适的稳定位置，从而使能量最小；当粒子寻找到比当前高能量状态会以Metropolis准则接收；
+对应于算法，粒子对应解，能量对应函数值(评估值)，温度对应为迭代控制参数，不同位置的能量差对应接受概率；
+优点：相比爬山法，模拟退火表现更好，因为可以以概率接受差解后可能搜索到更好的解；速度快；
+表现：模拟退火算法对于连续函数优化问题不能很好地收敛,因为连续搜索空间较大，另外没有方向引导，会重复搜索，因此搜索效率低；
+在离散问题中表现较好，比如tsp问题，因为搜索空间较小，且每一次产生的新解都是一个不同的解；
+对于离散问题，每次降温后不需要从当前最优解出发，因为整个算法过程就是逐渐收敛到最优解；
 """
 
 import numpy as np
@@ -29,7 +33,7 @@ class SA(object):
         self.cur_energy = 1234567890  # 当前解对应的能量
         self.best_ans = self.cur_ans    # 最优解
         self.best_energy = 1234567890     # 最优解对应的能量
-        # 值函数
+        # 能量值函数
         self.energy = lambda x: np.sum(np.array(x) ** 2)
         # self.energy = lambda x: np.sum(np.array(x) ** 2 - 10 * np.cos(np.array(x) * 2 * np.pi) + 10)
         pass
@@ -99,9 +103,13 @@ class SA(object):
         return next_ans
 
 
-class SaTsp(SA):
+class SATsp(SA):
     """
     使用模拟退火算法求解旅行商问题(TSP)
+    TSP问题：有n个结点的完全图，从某个结点出发历经所有结点再回到该点的代价或路径长度最小
+    TSP问题最优解的结论：最优解所展示出的历经结点顺序，也是从任一结点出发的最优结点历经顺序，因此，只需求出从某个点出发的最优解即可，所以复杂度为O((n-1)!)
+    任意两个结点之间的最小代价和距离呢？
+    解表现出了条件概率分布，可以用马尔科夫链过程来建立较好解的模型吗？
     """
     def __init__(self):
         super().__init__()
@@ -128,8 +136,8 @@ class SaTsp(SA):
                        [1340.0, 725.0], [1740.0, 245.0]]
         self.dims = len(self.citys)  # 解的维度
         self.cur_ans = np.arange(self.dims)  # 当前解
-        self.citys_distance = np.zeros((self.dims, self.dims))
-        self.energy = self.value_func
+        self.citys_distance = np.zeros((self.dims, self.dims))  # 两两城市之间的距离
+        self.energy = self.value_func   # 能量值函数
 
     def get_citys_distance(self):
         # 计算两两城市之间的距离
@@ -147,19 +155,16 @@ class SaTsp(SA):
         return dist
 
     def get_next_ans(self):
-        # 通过交换城市生成邻域解
+        # 通过交换解片段中的城市生成邻域解
         # change_index = sorted(np.random.randint(0, self.dims, 2))
         change_index = sorted(np.random.choice(self.dims, 2, replace=False))
         next_ans = cp.deepcopy(self.cur_ans)
         # print(self.cur_ans)
-        i = change_index[0]
-        j = change_index[1]
-        while True:
+        i, j = change_index[0], change_index[1]
+        while i < j:
             next_ans[i], next_ans[j] = next_ans[j], next_ans[i]
             i += 1
             j -= 1
-            if i >= j:
-                break
         # print(next_ans)
         return next_ans
     pass
@@ -172,7 +177,7 @@ if __name__ == "__main__":
     # print("最好解：%s " % sa.best_ans)
     # print("最优值： %s " % sa.best_energy)
 
-    sa = SaTsp()
+    sa = SATsp()
     sa.get_citys_distance()
     sa.simulate_anneal()
     print("最好解：%s " % sa.best_ans)
