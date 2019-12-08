@@ -209,7 +209,9 @@ class DETsp(差分进化算法DE):
         next_ans = cp.deepcopy(cur_ans)
         # print(cur_ans)
         i, j = change_index[0], change_index[1]
+        # next_ans[i], next_ans[j] = next_ans[j], next_ans[i]   # 两点交换
         while i < j:
+            # 片段内的所有点交换
             next_ans[i], next_ans[j] = next_ans[j], next_ans[i]
             i += 1
             j -= 1
@@ -222,13 +224,31 @@ class DETsp(差分进化算法DE):
         """
         # 对每个个体进行变异，变异方式为：交换解片段中的城市
         for 个体编号 in range(self.种群规模):
-            变异个体 = self.get_next_ans(self.种群[个体编号])
+            变异个体 = self.get_next_ans(self.过渡种群[个体编号])
             self.过渡种群[个体编号] = 变异个体
 
     def 交叉(self):
         """
-        从种群中选择两个个体进行交叉到过渡种群个
+        从种群中选择两个个体进行交叉到过渡种群，需要避免多个城市重复问题
         """
+        # 交叉
+        交叉父母组 = [np.random.choice(self.种群规模, 2, replace=False) for _ in range(self.种群规模)]
+        父本是否交叉序列 = np.random.rand(self.种群规模, self.维度) < self.交叉概率
+        for 个体编号 in range(self.种群规模):
+            父母对 = 交叉父母组[个体编号]
+            父本, 母本 = self.种群[父母对[0]], self.种群[父母对[1]]
+            if self.种群的适应度[父母对[0]] < self.种群的适应度[父母对[1]]:
+                父本, 母本 = self.种群[父母对[1]], self.种群[父母对[0]]
+            父本的基因 = np.array(list(set((父本 + 1) * 父本是否交叉序列[个体编号]) - set([0]))) - 1
+            母本的基因 = [母本[i] for i in range(self.维度) if 母本[i] not in 父本的基因]
+            母本的基因位 = 1 - 父本是否交叉序列[个体编号]
+            self.过渡种群[个体编号] = 父本
+            for 维度编号 in range(self.维度):
+                if 母本的基因位[维度编号]:
+                    self.过渡种群[个体编号][维度编号] = 母本的基因.pop(0)
+            # print(父本)
+            # print(母本)
+            # print(self.过渡种群[个体编号])
         pass
 
     def 繁殖(self):
@@ -237,7 +257,7 @@ class DETsp(差分进化算法DE):
         """
         self.交叉()
         self.变异()
-        
+
     pass
 
 
@@ -252,11 +272,12 @@ if __name__ == "__main__":
 
     差分进化对象 = DETsp()
     差分进化对象.迭代次数 = 1000
-    差分进化对象.种群规模 = 1
-    SN = 100  # 多轮搜索，每次从上一次最优解开始搜索,因为一般一轮是不能很好地收敛到最优
+    差分进化对象.种群规模 = 5
+    SN = 20  # 多轮搜索，每次从上一次最优解开始搜索,因为一般一轮是不能很好地收敛到最优
     for si in range(SN):
         差分进化对象.迭代()
     print("最好个体")
     print(差分进化对象.最好个体)
     print("最优值")
     print(差分进化对象.最好个体适应度)
+    print(len(list(set(差分进化对象.最好个体))))
