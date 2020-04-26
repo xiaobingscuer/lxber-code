@@ -12,27 +12,41 @@ import math
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
+# plt.ion()
+
 
 # create train data set
-def create_datas(seed=1):
+def create_datas(seed=1, train_num=120, test_num=30):
     np.random.seed(seed)
-    train_num = 320
     X_train = np.random.rand(2, train_num).astype(np.float32)
     Y_train = np.round(X_train)
     # Y_train = np.sum(Y_train, axis=0) % 2
     Y_train = np.array([(Y_train[0, :] != Y_train[1, :]) * 1.0])
 
-    print(X_train)
-    print(Y_train)
+    print("X_train.shape", X_train.shape)
+    print("Y_train.shape", Y_train.shape)
+
+    X_train_t = X_train.transpose()
+    is_x0 = (Y_train[0] == 0.)
+    is_x1 = (Y_train[0] == 1.)
+    X_train_0, X_train_1 = X_train_t[is_x0], X_train_t[is_x1]
+
+    fig, axs = plt.subplots(1, 1)
+    axs.plot([0., 1.], [0.5, 0.5], color='black')
+    axs.plot([.5, .5], [0., 1.], color='black')
+    axs.scatter(X_train_0[:, 0], X_train_0[:, 1], label='0', alpha=0.6, color='r')
+    axs.scatter(X_train_1[:, 0], X_train_1[:, 1], label='1', alpha=0.6, color='b')
+    axs.set(title='train datas')
+    axs.legend()
+    # plt.show()
 
     # create test data set
-    X_test = np.random.rand(2, 10).astype(np.float32)
+    X_test = np.random.rand(2, test_num).astype(np.float32)
     Y_test = np.round(X_test)
-    # Y_test = np.sum(Y_test, axis=0) % 2
     Y_test = np.array([(Y_test[0, :] != Y_test[1, :]) * 1.0])
 
-    print(X_test)
-    print(Y_test)
+    print("X_test.shape", X_test.shape)
+    print("Y_test.shape", Y_test.shape)
 
     return X_train, Y_train, X_test, Y_test
 
@@ -45,16 +59,13 @@ def create_placeholders(n_x, n_y):
 
 def initialize_parameters():
     tf.set_random_seed(1)
-    W1 = tf.get_variable("W1", [3, 2], initializer=tf.contrib.layers.xavier_initializer(seed=1))
+    W1 = tf.get_variable("W1", [2, 2], initializer=tf.contrib.layers.xavier_initializer(seed=1))
+    b1 = tf.get_variable("b1", [2, 1], initializer=tf.zeros_initializer())
 
-    b1 = tf.get_variable("b1", [3, 1], initializer=tf.zeros_initializer())
+    W2 = tf.get_variable("W2", [3, 2], initializer=tf.contrib.layers.xavier_initializer(seed=1))
+    b2 = tf.get_variable("b2", [3, 1], initializer=tf.zeros_initializer())
 
-    W2 = tf.get_variable("W2", [2, 3], initializer=tf.contrib.layers.xavier_initializer(seed=1))
-
-    b2 = tf.get_variable("b2", [2, 1], initializer=tf.zeros_initializer())
-
-    W3 = tf.get_variable("W3", [1, 2], initializer=tf.contrib.layers.xavier_initializer(seed=1))
-
+    W3 = tf.get_variable("W3", [1, 3], initializer=tf.contrib.layers.xavier_initializer(seed=1))
     b3 = tf.get_variable("b3", [1, 1], initializer=tf.zeros_initializer())
 
     parameters = {"W1": W1,
@@ -65,6 +76,35 @@ def initialize_parameters():
                   "b3": b3
                   }
     return parameters
+
+
+def add_layer(layer_name, inputs, node_size, in_size, activation_func=None):
+    with tf.name_scope(layer_name):
+        # Weights = tf.get_variable(layer_name+"_W", [node_size, in_size], initializer=tf.contrib.layers.xavier_initializer(seed=1))
+        # biases = tf.get_variable(layer_name+"_b", [node_size, 1], initializer=tf.zeros_initializer())
+        with tf.name_scope("Weights"):
+            Weights = tf.Variable(tf.random_normal([node_size, in_size]))
+
+        with tf.name_scope("biases"):
+            biases = tf.Variable(tf.zeros([node_size, 1]))
+
+        with tf.name_scope("outputs"):
+            Z = tf.add(tf.matmul(Weights, inputs), biases)
+            if activation_func is None:
+                outputs = Z
+            else:
+                outputs = activation_func(Z)
+        tf.summary.histogram(layer_name+"/Weights", Weights)
+        tf.summary.histogram(layer_name+"/biases", biases)
+        tf.summary.histogram(layer_name+"/outputs", outputs)
+        return outputs
+
+
+def forward_propagation_layers(inputs, input_size, node_sizes, activation_funcs, layer_count=0):
+    if len(node_sizes) == 0:
+        return inputs
+    outputs = add_layer("layer%s"%layer_count, inputs, node_sizes[0], input_size, activation_funcs[0])
+    return forward_propagation_layers(outputs, node_sizes[0], node_sizes[1:], activation_funcs[1:], layer_count+1)
 
 
 def forward_propagation(X, parameters):
@@ -84,19 +124,34 @@ def forward_propagation(X, parameters):
     Z3 = tf.add(tf.matmul(W3, A2), b3)
     A3 = tf.nn.sigmoid(Z3)
 
+    tf.summary.histogram("W1", W1)
+    tf.summary.histogram("W2", W2)
+    tf.summary.histogram("W3", W3)
+
+    tf.summary.histogram("b1", b1)
+    tf.summary.histogram("b2", b2)
+    tf.summary.histogram("b3", b3)
+
+    tf.summary.histogram("A1", A1)
+    tf.summary.histogram("A2", A2)
+    tf.summary.histogram("A3", A3)
+
     return A3
 
 
-def compute_cost(Z3, Y):
-    logits = tf.transpose(Z3)
-    labels = tf.transpose(Y)
-    cost = tf.reduce_mean(tf.nn.l2_loss(logits - labels))
-    # cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
+def compute_cost(Y_hat, Y):
+    Y_hat = tf.transpose(Y_hat)
+    Y = tf.transpose(Y)
+    cost = tf.reduce_mean(tf.reduce_sum(tf.square(Y_hat - Y)))
+    # logits = tf.transpose(Y_hat)
+    # labels = tf.transpose(Y)
+    # cost = tf.reduce_mean(tf.nn.l2_loss(logits - labels))
+    tf.summary.scalar("loss", cost)
     return cost
 
 
-def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000, minibatch_size=16, print_cost=True):
-    ops.reset_default_graph()
+def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000, minibatch_size=10, print_cost=True):
+    # ops.reset_default_graph()
 
     tf.set_random_seed(1)
     seed = 3
@@ -106,24 +161,33 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
     print(n_x, m, n_y)
 
     costs = []
+    with tf.name_scope('inputs'):
+        X, Y = create_placeholders(n_x, n_y)
 
-    X, Y = create_placeholders(n_x, n_y)
+    with tf.name_scope('parameters'):
+        parameters = initialize_parameters()
 
-    parameters = initialize_parameters()
+    with tf.name_scope('forward_propagation'):
+        # Y_hat = forward_propagation(X, parameters)
+        Y_hat = forward_propagation_layers(X, n_x, [2, 3, 1], [tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid], 0)
 
-    Z3 = forward_propagation(X, parameters)
+    with tf.name_scope('loss'):
+        cost = compute_cost(Y_hat, Y)
 
-    cost = compute_cost(Z3, Y)
+    with tf.name_scope('train'):
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+    merged = tf.summary.merge_all()
 
     init = tf.global_variables_initializer()
 
     with tf.Session() as sess:
+        writer = tf.summary.FileWriter("D:\\lxb\\imgs\\RL_img\\logs", sess.graph)
+
         sess.run(init)
-        epoch_cost = 0.
+        # epoch_cost = 0.
         for epoch in range(num_epochs):
-            # epoch_cost = 0.
+            epoch_cost = 0.
             num_minibatches = int(m / minibatch_size)
             seed = seed + 1
             minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
@@ -132,27 +196,26 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
                 _, minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
                 epoch_cost += minibatch_cost / num_minibatches
 
-            # _, minibatch_cost = sess.run([optimizer, cost], feed_dict={X: X_train, Y: Y_train})
-            # epoch_cost = minibatch_cost
-
             if print_cost == True and epoch % 100 == 0:
                 print("Cost after epoch %i: %f" % (epoch, epoch_cost))
             if print_cost == True and epoch % 5 == 0:
                 costs.append(epoch_cost)
+                result = sess.run(merged, feed_dict={X: minibatch_X, Y: minibatch_Y})
+                writer.add_summary(result, epoch)
 
+        figs, axss = plt.subplots(1, 1)
         plt.plot(np.squeeze(costs))
         plt.ylabel('cost')
         plt.xlabel('iterations (per tens)')
         plt.title("Learning rate =" + str(learning_rate))
-        plt.show()
+        # plt.show()
 
         parameters = sess.run(parameters)
 
         print ("Parameters have been trained!")
 
         # Calculate the correct predictions
-        # correct_prediction = tf.equal(tf.argmax(Z3), tf.argmax(Y))
-        correct_prediction = tf.equal(Z3 > 0.5, Y > 0.5)
+        correct_prediction = tf.equal(Y_hat > 0.5, Y > 0.5)
         # Calculate accuracy on the test set
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         print("Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
@@ -203,15 +266,19 @@ def random_mini_batches(X, Y, mini_batch_size=64, seed=0):
 
 def prdeict(X, parameters):
     with tf.Session() as sess:
-        z3 = sess.run(forward_propagation(X, parameters))
-        return z3
+        Y_hat = sess.run(forward_propagation(X, parameters))
+        return Y_hat
         # return (z3 > 0.5) * 1.
 
 
-X_train, Y_train, X_test, Y_test = create_datas(seed=1)
+X_train, Y_train, X_test, Y_test = create_datas(seed=1, train_num=320, test_num=120)
 parameters = model(X_train, Y_train, X_test, Y_test)
+
 
 X = [[0.3, 0.1, 0.6],
    [0.2, 0.8, 0.7]]
 print(X)
 print(prdeict(X, parameters))
+
+#
+plt.show()
