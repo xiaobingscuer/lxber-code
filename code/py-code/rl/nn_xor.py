@@ -78,12 +78,12 @@ def initialize_parameters():
     return parameters
 
 
-def add_layer(layer_name, inputs, node_size, in_size, activation_func=None):
+def add_layer(layer_name, inputs, node_size, in_size, activation_func=None, parameters={}):
     with tf.name_scope(layer_name):
         # Weights = tf.get_variable(layer_name+"_W", [node_size, in_size], initializer=tf.contrib.layers.xavier_initializer(seed=1))
         # biases = tf.get_variable(layer_name+"_b", [node_size, 1], initializer=tf.zeros_initializer())
         with tf.name_scope("Weights"):
-            Weights = tf.Variable(tf.random_normal([node_size, in_size]))
+            Weights = tf.Variable(tf.random_normal([node_size, in_size]), seed=1)
 
         with tf.name_scope("biases"):
             biases = tf.Variable(tf.zeros([node_size, 1]))
@@ -94,17 +94,44 @@ def add_layer(layer_name, inputs, node_size, in_size, activation_func=None):
                 outputs = Z
             else:
                 outputs = activation_func(Z)
+
+        parameters.update({layer_name + "_W": Weights})
+        parameters.update({layer_name + "_b": biases})
+
         tf.summary.histogram(layer_name+"/Weights", Weights)
         tf.summary.histogram(layer_name+"/biases", biases)
         tf.summary.histogram(layer_name+"/outputs", outputs)
         return outputs
 
 
-def forward_propagation_layers(inputs, input_size, node_sizes, activation_funcs, layer_count=0):
+def forward_propagation_layers(inputs, input_size, node_sizes, activation_funcs, parameters, layer_count=0):
     if len(node_sizes) == 0:
         return inputs
-    outputs = add_layer("layer%s"%layer_count, inputs, node_sizes[0], input_size, activation_funcs[0])
-    return forward_propagation_layers(outputs, node_sizes[0], node_sizes[1:], activation_funcs[1:], layer_count+1)
+    outputs = add_layer("layer%s"%layer_count, inputs, node_sizes[0], input_size, activation_funcs[0], parameters)
+    return forward_propagation_layers(outputs, node_sizes[0], node_sizes[1:], activation_funcs[1:], parameters, layer_count+1)
+
+
+def predict_a_layer(layer_name, inputs, weights, biases, activation_func=None):
+    with tf.name_scope(layer_name):
+        with tf.name_scope("predict"):
+            Z = tf.add(tf.matmul(weights, inputs), biases)
+            if activation_func is None:
+                outputs = Z
+            else:
+                outputs = activation_func(Z)
+            return outputs
+
+
+def predict_layers(inputs, parameters, params_activation_func, layer_count=0):
+    layers = len(params_activation_func)
+    if layers == layer_count:
+        return inputs
+    layer_name = "layer%s"%layer_count
+    weights = parameters[layer_name + "_W"]
+    biases = parameters[layer_name + "_b"]
+    actfunc = params_activation_func[layer_count]
+    outputs = predict_a_layer(layer_name, inputs, weights, biases, actfunc)
+    return predict_layers(outputs, parameters, params_activation_func, layer_count+1)
 
 
 def forward_propagation(X, parameters):
@@ -165,11 +192,14 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
         X, Y = create_placeholders(n_x, n_y)
 
     with tf.name_scope('parameters'):
-        parameters = initialize_parameters()
+        # parameters = initialize_parameters()
+        parameters = {}
+        params_activation_func = [tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid]
+        nodes = [2, 3, 1]
 
     with tf.name_scope('forward_propagation'):
         # Y_hat = forward_propagation(X, parameters)
-        Y_hat = forward_propagation_layers(X, n_x, [2, 3, 1], [tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid], 0)
+        Y_hat = forward_propagation_layers(X, n_x, nodes, params_activation_func, parameters, 0)
 
     with tf.name_scope('loss'):
         cost = compute_cost(Y_hat, Y)
@@ -212,7 +242,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
 
         parameters = sess.run(parameters)
 
-        print ("Parameters have been trained!")
+        print("Parameters have been trained!")
 
         # Calculate the correct predictions
         correct_prediction = tf.equal(Y_hat > 0.5, Y > 0.5)
@@ -220,7 +250,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         print("Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
         print("Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
-        return parameters
+        return parameters, params_activation_func
 
 
 def random_mini_batches(X, Y, mini_batch_size=64, seed=0):
@@ -268,17 +298,27 @@ def prdeict(X, parameters):
     with tf.Session() as sess:
         Y_hat = sess.run(forward_propagation(X, parameters))
         return Y_hat
-        # return (z3 > 0.5) * 1.
+        # return (Y_hat > 0.5) * 1.
 
 
-X_train, Y_train, X_test, Y_test = create_datas(seed=1, train_num=320, test_num=120)
-parameters = model(X_train, Y_train, X_test, Y_test)
+def predict_nn(inputs, parameters, params_activation_func):
+    with tf.Session() as sess:
+        with tf.name_scope('predict_layers'):
+            Y_hat = sess.run(predict_layers(inputs, parameters, params_activation_func))
+            return Y_hat
+        # return (Y_hat > 0.5) * 1.
+
+
+X_train, Y_train, X_test, Y_test = create_datas(seed=1, train_num=140, test_num=120)
+# parameters = model(X_train, Y_train, X_test, Y_test)
+parameters, params_activation_func = model(X_train, Y_train, X_test, Y_test)
 
 
 X = [[0.3, 0.1, 0.6],
-   [0.2, 0.8, 0.7]]
+     [0.2, 0.8, 0.7]]
 print(X)
-print(prdeict(X, parameters))
+# print(prdeict(X, parameters))
+print(predict_nn(X, parameters, params_activation_func))
 
 #
 plt.show()

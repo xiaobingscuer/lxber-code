@@ -52,8 +52,24 @@ class 蒙特卡洛模拟采样():
 
         pass
 
+    def markov_chain(self, P, k):
+        Pij = cp.copy(P)
+        Pij = np.matrix(Pij)
+        for i in range(k):
+            Pij = Pij * Pij
+        print(Pij)
+        return Pij
+
 
 if __name__ == "__main__":
     print("hello world!")
     蒙特卡洛 = 蒙特卡洛模拟采样()
-    蒙特卡洛.求π()
+    # 蒙特卡洛.求π()
+    P = [[0.5, 0.5, 0],
+         [0, 0, 1],
+         [1, 0, 0]]
+    P = [[0., 0.5, 0.5],
+         [1, 0., 0.],
+         [1, 0., 0.]]
+    Pij = 蒙特卡洛.markov_chain(P, 1000)
+    print(Pij)
