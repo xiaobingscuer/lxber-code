@@ -20,7 +20,6 @@ def create_datas(seed=1, train_num=120, test_num=30):
     np.random.seed(seed)
     X_train = np.random.rand(2, train_num).astype(np.float32)
     Y_train = np.round(X_train)
-    # Y_train = np.sum(Y_train, axis=0) % 2
     Y_train = np.array([(Y_train[0, :] != Y_train[1, :]) * 1.0])
 
     print("X_train.shape", X_train.shape)
@@ -83,7 +82,7 @@ def add_layer(layer_name, inputs, node_size, in_size, activation_func=None, para
         # Weights = tf.get_variable(layer_name+"_W", [node_size, in_size], initializer=tf.contrib.layers.xavier_initializer(seed=1))
         # biases = tf.get_variable(layer_name+"_b", [node_size, 1], initializer=tf.zeros_initializer())
         with tf.name_scope("Weights"):
-            Weights = tf.Variable(tf.random_normal([node_size, in_size]), seed=1)
+            Weights = tf.Variable(tf.random_normal([node_size, in_size], seed=1))
 
         with tf.name_scope("biases"):
             biases = tf.Variable(tf.zeros([node_size, 1]))
@@ -171,8 +170,8 @@ def compute_cost(Y_hat, Y):
     Y = tf.transpose(Y)
     cost = tf.reduce_mean(tf.reduce_sum(tf.square(Y_hat - Y)))
     # logits = tf.transpose(Y_hat)
-    # labels = tf.transpose(Y)
-    # cost = tf.reduce_mean(tf.nn.l2_loss(logits - labels))
+    #     # labels = tf.transpose(Y)
+    #     # cost = tf.reduce_mean(tf.nn.l2_loss(logits - labels))
     tf.summary.scalar("loss", cost)
     return cost
 
