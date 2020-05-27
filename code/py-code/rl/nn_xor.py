@@ -8,6 +8,7 @@ tensorflow 搭建神经网络学习异或函数(xor)
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import json
 
 import tensorflow as tf
 from tensorflow.python.framework import ops
@@ -25,21 +26,10 @@ def create_datas(seed=1, train_num=120, test_num=30):
     print("X_train.shape", X_train.shape)
     print("Y_train.shape", Y_train.shape)
 
-    X_train_t = X_train.transpose()
-    is_x0 = (Y_train[0] == 0.)
-    is_x1 = (Y_train[0] == 1.)
-    X_train_0, X_train_1 = X_train_t[is_x0], X_train_t[is_x1]
-
-    fig, axs = plt.subplots(1, 1)
-    axs.plot([0., 1.], [0.5, 0.5], color='black')
-    axs.plot([.5, .5], [0., 1.], color='black')
-    axs.scatter(X_train_0[:, 0], X_train_0[:, 1], label='0', alpha=0.6, color='r')
-    axs.scatter(X_train_1[:, 0], X_train_1[:, 1], label='1', alpha=0.6, color='b')
-    axs.set(title='train datas')
-    axs.legend()
-    # plt.show()
+    plot_data_set(X_train, Y_train, 'train datas')
 
     # create test data set
+    np.random.seed(seed*1024)
     X_test = np.random.rand(2, test_num).astype(np.float32)
     Y_test = np.round(X_test)
     Y_test = np.array([(Y_test[0, :] != Y_test[1, :]) * 1.0])
@@ -47,8 +37,25 @@ def create_datas(seed=1, train_num=120, test_num=30):
     print("X_test.shape", X_test.shape)
     print("Y_test.shape", Y_test.shape)
 
+    plot_data_set(X_test, Y_test, 'test datas')
+
     return X_train, Y_train, X_test, Y_test
 
+def plot_data_set(X, Y, title):
+    X_t = X.transpose()
+    is_x0 = (Y[0] == 0.)
+    is_x1 = (Y[0] == 1.)
+    X_0, X_1 = X_t[is_x0], X_t[is_x1]
+
+    fig, axs = plt.subplots(1, 1)
+    axs.plot([0., 1.], [0.5, 0.5], color='black')
+    axs.plot([.5, .5], [0., 1.], color='black')
+    axs.scatter(X_0[:, 0], X_0[:, 1], label='0', alpha=0.6, color='b')
+    axs.scatter(X_1[:, 0], X_1[:, 1], label='1', alpha=0.6, color='r')
+    axs.set(title=title)
+    axs.legend()
+    # plt.show()
+    pass
 
 def create_placeholders(n_x, n_y):
     X = tf.placeholder(tf.float32, [n_x, None], name='X')
@@ -169,14 +176,11 @@ def compute_cost(Y_hat, Y):
     Y_hat = tf.transpose(Y_hat)
     Y = tf.transpose(Y)
     cost = tf.reduce_mean(tf.reduce_sum(tf.square(Y_hat - Y)))
-    # logits = tf.transpose(Y_hat)
-    #     # labels = tf.transpose(Y)
-    #     # cost = tf.reduce_mean(tf.nn.l2_loss(logits - labels))
     tf.summary.scalar("loss", cost)
     return cost
 
 
-def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000, minibatch_size=10, print_cost=True):
+def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=5000, minibatch_size=20, print_cost=True):
     # ops.reset_default_graph()
 
     tf.set_random_seed(1)
@@ -193,8 +197,8 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
     with tf.name_scope('parameters'):
         # parameters = initialize_parameters()
         parameters = {}
-        params_activation_func = [tf.nn.sigmoid, tf.nn.sigmoid, tf.nn.sigmoid]
-        nodes = [2, 3, 1]
+        nodes = [4, 2, 1]
+        params_activation_func = [tf.nn.sigmoid] * len(nodes)
 
     with tf.name_scope('forward_propagation'):
         # Y_hat = forward_propagation(X, parameters)
@@ -211,7 +215,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
     init = tf.global_variables_initializer()
 
     with tf.Session() as sess:
-        writer = tf.summary.FileWriter("D:\\lxb\\imgs\\RL_img\\logs", sess.graph)
+        writer = tf.summary.FileWriter("D:\\lxb\\imgs\\RL_img\\nn_xor\\logs", sess.graph)
 
         sess.run(init)
         # epoch_cost = 0.
@@ -239,7 +243,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000
         plt.title("Learning rate =" + str(learning_rate))
         # plt.show()
 
-        parameters = sess.run(parameters)
+        # parameters = sess.run(parameters)
 
         print("Parameters have been trained!")
 
@@ -307,17 +311,26 @@ def predict_nn(inputs, parameters, params_activation_func):
             return Y_hat
         # return (Y_hat > 0.5) * 1.
 
-
-X_train, Y_train, X_test, Y_test = create_datas(seed=1, train_num=140, test_num=120)
+# 启动
+X_train, Y_train, X_test, Y_test = create_datas(seed=1, train_num=20, test_num=10)
 # parameters = model(X_train, Y_train, X_test, Y_test)
 parameters, params_activation_func = model(X_train, Y_train, X_test, Y_test)
 
+# 将网络参数保存到文件
+with open('nn_parameters.txt', 'wb+') as fs:
+    pass
 
-X = [[0.3, 0.1, 0.6],
-     [0.2, 0.8, 0.7]]
+# 可视化在测试集上的表现
+Y_test_hat = predict_nn(X_test, parameters, params_activation_func)
+Y_test_hat = (np.array(Y_test_hat) > 0.5) * 1
+plot_data_set(X_test, Y_test_hat, 'predict test datas')
+
+# 预测未在训练集合测试集上的数据
+X = [[0.3, 0.1, 0.6, 0.4999999999999999],
+     [0.2, 0.8, 0.7, 0.5000000000000001]]
 print(X)
 # print(prdeict(X, parameters))
-print(predict_nn(X, parameters, params_activation_func))
+print((predict_nn(X, parameters, params_activation_func) > 0.5) * 1)
 
 #
 plt.show()
