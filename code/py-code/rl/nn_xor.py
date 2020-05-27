@@ -180,7 +180,7 @@ def compute_cost(Y_hat, Y):
     return cost
 
 
-def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=5000, minibatch_size=20, print_cost=True):
+def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=3000, minibatch_size=20, print_cost=True):
     # ops.reset_default_graph()
 
     tf.set_random_seed(1)
@@ -243,7 +243,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate=0.001, num_epochs=5000
         plt.title("Learning rate =" + str(learning_rate))
         # plt.show()
 
-        # parameters = sess.run(parameters)
+        parameters = sess.run(parameters)
 
         print("Parameters have been trained!")
 
@@ -312,7 +312,7 @@ def predict_nn(inputs, parameters, params_activation_func):
         # return (Y_hat > 0.5) * 1.
 
 # 启动
-X_train, Y_train, X_test, Y_test = create_datas(seed=1, train_num=20, test_num=10)
+X_train, Y_train, X_test, Y_test = create_datas(seed=1, train_num=240, test_num=120)
 # parameters = model(X_train, Y_train, X_test, Y_test)
 parameters, params_activation_func = model(X_train, Y_train, X_test, Y_test)
 
@@ -334,3 +334,5 @@ print((predict_nn(X, parameters, params_activation_func) > 0.5) * 1)
 
 #
 plt.show()
+
+# tensorboard --logdir='logs'
