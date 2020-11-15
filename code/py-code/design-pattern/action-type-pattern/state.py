@@ -12,3 +12,82 @@
 
 菜鸟教程中的策略模式与状态模式的区别那边文章讲的很清楚
 """
+
+from abc import ABCMeta, abstractmethod
+
+
+class Bike(object):
+    def __init__(self):
+        self.gearState = FirstGear(self)
+
+    def gear_up(self):
+        self.gearState.gear_up()
+
+    def gear_down(self):
+        self.gearState.gear_down()
+
+
+class GearState(metaclass=ABCMeta):
+    def __init__(self, bike):
+        self.bike = bike
+
+    @abstractmethod
+    def gear_up(self):
+        pass
+
+    @abstractmethod
+    def gear_down(self):
+        pass
+
+
+class FirstGear(GearState):
+    def __init__(self, bike):
+        super().__init__(bike)
+
+    def gear_up(self):
+        print('moving up  from first to second gear.')
+        self.bike.gearState = SecondGear(self.bike)
+
+    def gear_down(self):
+        print('already in first gear, cannot moving down.')
+
+
+class SecondGear(GearState):
+    def __init__(self, bike):
+        super().__init__(bike)
+
+    def gear_up(self):
+        print('moving up from second to third gear.')
+        self.bike.gearState = ThirdGear(self.bike)
+
+    def gear_down(self):
+        print('moving down from second to first gear.')
+        self.bike.gearState = FirstGear(self.bike)
+
+
+class ThirdGear(GearState):
+    def __init__(self, bike):
+        super().__init__(bike)
+
+    def gear_up(self):
+        print('already in third gear, cannot moving up.')
+
+    def gear_down(self):
+        print('moving down from third to second gear.')
+        self.bike.gearState = SecondGear(self.bike)
+
+
+def main():
+    bike = Bike()
+    bike.gear_down()
+    bike.gear_up()
+    bike.gear_up()
+    bike.gear_up()
+    bike.gear_up()
+    bike.gear_down()
+    bike.gear_down()
+    bike.gear_down()
+
+
+if __name__ == '__main__':
+    main()
